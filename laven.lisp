@@ -109,8 +109,8 @@
     init
     load
     create
+    test
     ; build
-    ; test
     help))
 
 ; Change to package laven.
