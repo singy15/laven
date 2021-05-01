@@ -1,35 +1,46 @@
-#|
-  laven
-  Version 0.1.0
-  Copyright (c) 2018 kedama
-  License : MIT
-|#
+;;;; laven
+;;;; Version 0.1.0
+;;;; Copyright (c) 2021 kedama
+;;;; License : MIT
+
+;;
+;; Claims
+;;
 
 ; Muffle style-warning.
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
+
+;;
+;; Require
+;;
+
 ; Require ASDF.
 (require 'asdf)
 
-#| 
-  Define package quicklisp-quickstart to prevent compile error.
-|#
+
+;;
+;; Packages
+;;
+
+;;; Define package quicklisp-quickstart to prevent compile error.
 (defpackage quicklisp-quickstart
   (:use :cl)
   (:export
     install))
 
-#| 
-  Define package quicklisp-client to prevent compile error.
-|#
+;;; Define package quicklisp-client to prevent compile error.
 (defpackage quicklisp-client
   (:use :cl)
   (:export
     quickload))
 
-#|
-  Define laven-util package.
-|#
+
+;;
+;; Utilities
+;;
+
+;;; Define laven-util package.
 (defpackage laven-util
   (:nicknames :lvn-util)
   (:use :cl :sb-ext)
@@ -41,27 +52,21 @@
     get-home-dir-path
     get-cur-dir-name))
 
-;; Change package to laven-util.
+; Change package to laven-util.
 (in-package :laven-util)
 
-#|
-  Output string to multiple streams.
-|#
+;;; Output string to multiple streams
 (defun output-multiple-stream (strms str)
   (mapc 
     (lambda (s) 
       (format s str) )
     strms))
 
-#|
-  Generate help string for function.
-|#
+;;; Generate help string for function
 (defun gen-help-str (sym)
   (format nil "* ~(~A~):~(~A~)~%  ~A~%~%" (nth 0 (package-nicknames :laven)) sym (documentation sym 'function)))
 
-#|
-  Byte copy file.
-|#
+;;; Byte copy file
 (defun byte-copy (input outfile)
   (with-open-file 
     (in-stream input :direction :input :element-type '(unsigned-byte 8) :if-does-not-exist nil)
@@ -71,9 +76,7 @@
         (loop for byte = (read-byte in-stream nil) while byte do 
           (write-byte byte out-stream))))))
 
-#|
-  Logging.
-|#
+;;; Logging
 (defun logging (msg &optional (fmt nil))
   (format t 
           "~A~A~%" 
@@ -84,21 +87,20 @@
                 ((equal fmt :err) "ERROR: ")) 
           msg))
 
-#|
-  Get home directory path.
-|#
+;;; Get home directory path
 (defun get-home-dir-path ()
   (cl-user::user-homedir-pathname))
 
-#|
-  Get current directory name.
-|#
+;;; Get current directory name
 (defun get-cur-dir-name ()
   (car (reverse (pathname-directory (truename "")))))
 
-#|
-  Define laven package.
-|#
+
+;;
+;; Laven package
+;;
+
+;;; Define laven package.
 (defpackage laven
   (:nicknames :lvn)
   (:use :cl :sb-ext)
@@ -108,13 +110,17 @@
     add-to-init-file
     init
     load
-    create
+    create-system
     test
     ; build
     help))
 
 ; Change to package laven.
 (in-package :laven)
+
+;;
+;; Variables
+;;
 
 ; laven directory.
 (defvar *laven-dir* #p".laven/")
@@ -134,16 +140,18 @@
 ; laven directory for .gitignore
 (defvar *laven-dir-gitignore* "/.laven")
 
-#|
-  Load quicklisp if exists.
-|#
+
+;;
+;; Functions
+;;
+
+;;; Load quicklisp if exists
 (defun load-quicklisp ()
   (when (probe-file *laven-quicklisp-setup*)
     (cl-user::load *laven-quicklisp-setup*)))
 
+;;; Install laven to home directory
 (defun laven-install ()
-  "Install laven to home directory."
-  
   (lvn-util:logging "LAVEN-INSTALL" :begin)
   
   (ensure-directories-exist (merge-pathnames *laven-dir* (lvn-util:get-home-dir-path)))
@@ -152,9 +160,8 @@
   (lvn-util:logging "(lvn:add-to-init-file) will add your .sbclrc to load laven on boot")
   (lvn-util:logging "DONE" :end))
 
+;;; Add setting to .sbclrc
 (defun add-to-init-file ()
-  "Add setting to .sbclrc"
-  
   (lvn-util:logging "ADD-TO-INIT-FILE" :begin)
   (lvn-util:logging "Add settings to your .sbclrc to load laven on startup.")
 
@@ -176,9 +183,8 @@
 
   (lvn-util:logging "DONE" :end))
 
-(defun init ()
-  "Initialize laven in current directory."
-
+;;; Initialize laven in current directory
+(defun init (&key proxy)
   (lvn-util:logging "INIT" :begin)
   
   ; Check laven initialized.
@@ -198,22 +204,20 @@
   (ensure-directories-exist *laven-dir*)
 
   ; Install QuickLisp.
-  (quicklisp-quickstart:install :path *laven-quicklisp-dir*)
+  (if proxy
+    (quicklisp-quickstart:install :path *laven-quicklisp-dir* :proxy proxy)
+    (quicklisp-quickstart:install :path *laven-quicklisp-dir*))
 
   ; Load QuickLisp.
   (load-quicklisp)
 
   (lvn-util:logging "DONE" :end))
 
+;;; Load system
 (defun load (&optional system-name)
-  "Load system."
-
-  ; Load system.
   (quicklisp-client:quickload (if system-name system-name (lvn-util:get-cur-dir-name))))
 
-#|
-  Create .asd file.
-|#
+;;; Create .asd file
 (defun create-asd (name)
   (let* ((strm (open (format nil "~A.asd" name)
                     :direction :output
@@ -230,9 +234,7 @@
     (format strm "~%")
     (close strm)))
 
-#|
-  Create source file.
-|#
+;;; Create source file
 (defun create-src (name)
   (ensure-directories-exist (merge-pathnames #p"src/"))
   (let* ((strm (open (format nil "src/~A.lisp" name)
@@ -245,9 +247,7 @@
     (format strm ";; blah blah blah.~%")
     (close strm)))
 
-#|
-  Create .gitignore file.
-|#
+;;; Create .gitignore file
 (defun create-gitignore (name)
   (let* ((strm (open (format nil ".gitignore" name)
                     :direction :output
@@ -255,9 +255,8 @@
     (format strm "~A~%" *laven-dir-gitignore*)
     (close strm)))
 
-(defun create ()
-  "Create system skeleton."
-  
+;;; Create system skeleton
+(defun create-system ()
   (lvn-util:logging "CREATE" :begin)
 
   (let ((name (lvn-util:get-cur-dir-name)))
@@ -267,27 +266,24 @@
 
   (lvn-util:logging "DONE" :end)  )
 
+;;; Create executable and exit (SBCL only)
 (defun build (filename toplevel)
-  "Create executable and exit (SBCL only)."
-
   (lvn-util:logging "BUILD" :begin)
 
   (sb-ext:save-lisp-and-die filename :toplevel toplevel :executable t)
 
   (lvn-util:logging "DONE" :end))
 
+;;; Execute asdf:test-system
 (defun test (system-name)
-  "Execute asdf:test-system."
-
   (asdf:test-system system-name))
 
+;;; Show commands available
 (defun help ()
-  "Show commands available."
-
   (format t (lvn-util:gen-help-str 'laven-install))
   (format t (lvn-util:gen-help-str 'add-to-init-file))
   (format t (lvn-util:gen-help-str 'load))
-  (format t (lvn-util:gen-help-str 'create))
+  (format t (lvn-util:gen-help-str 'create-system))
   ; (format t (lvn-util:gen-help-str 'build))
   ; (format t (lvn-util:gen-help-str 'test))
   (format t (lvn-util:gen-help-str 'help  )))
@@ -298,10 +294,10 @@
 ; Change package to cl-user.
 (in-package :cl-user)
 
-#|
-  Add current directory to central-registry.
-|#
-(setf asdf:*central-registry* '(*default-pathname-defaults*))
+; Add current directory to central-registry.
+; (setf asdf:*central-registry* '(*default-pathname-defaults*))
+(asdf:initialize-source-registry
+  `(:source-registry (:tree ,*default-pathname-defaults*) :inherit-configuration))
 
 ; Unmuffle style-warning.
 (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
